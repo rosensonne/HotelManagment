@@ -23,7 +23,7 @@ class Room(Document):
     price_per_night = FloatField(required=True)
     capacity = IntField(required=True, min_value=1)
     amenities = ListField(EmbeddedDocumentField(Amenity))
-    availability  = BooleanField(default=True)
+    availability = BooleanField(default=True)
     images = ListField(StringField())
     description = StringField()
 
@@ -32,7 +32,7 @@ class Room(Document):
         'indexes': [
             'number_room',
             'price_per_night',
-            [("type", 1), ("availability ", 1)],
+            [("type", 1), ("availability", 1)],
             {
                 'fields': ['type', 'price_per_night'],
                 'name': 'idx_type_price'

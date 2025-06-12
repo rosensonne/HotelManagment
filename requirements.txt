@@ -2,3 +2,7 @@ mongoengine
 pydantic
 fastapi
 uvicorn
+pydantic[email]
+python-jose
+passlib
+python-multipart
