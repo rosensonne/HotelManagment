@@ -1,5 +1,6 @@
 from datetime import datetime, timedelta
 from fastapi import APIRouter, HTTPException, status, Depends
+from fastapi.logger import logger
 from fastapi.security import OAuth2PasswordRequestForm
 from mongoengine import DoesNotExist
 
@@ -106,14 +107,21 @@ def send_password_reset_email(request: PasswordResetRequest):
         # TODO: Implementar envío de email
         # send_reset_email(user.email, reset_token)
 
-        print(f"Token de reset generado para: {user.email}")
-        print(f"Token: {reset_token}")  # Solo para desarrollo
+        logger.info(f"Token de reset generado para: {user.email}")
+        logger.info(f"Token: {reset_token}")  # Solo para desarrollo
 
-        return {"message": "Se ha enviado un email con instrucciones para resetear la contraseña"}
+        print(f"🟢 Token generado: {reset_token}")
+        return {
+            "message": "Se ha enviado un email con instrucciones para resetear la contraseña",
+            "token": reset_token  # ⚠️ SOLO DESARROLLO
+        }
+
 
     except DoesNotExist:
-        # Por seguridad, no revelar si el email existe o no
-        return {"message": "Se ha enviado un email con instrucciones para resetear la contraseña"}
+        print("⚠️ Usuario no encontrado (pero ocultamos esto)")
+        return {
+            "message": "Se ha enviado un email con instrucciones para resetear la contraseña"
+        }
 
 
 @router.post("/reset-password", status_code=status.HTTP_200_OK)

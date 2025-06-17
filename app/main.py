@@ -7,7 +7,6 @@ from app.routers import rooms, users, auth, hotel, amenity
 app = FastAPI(title="Hotel Management API")
 
 
-
 connect_db()
 
 app.include_router(rooms.router)
