@@ -70,6 +70,11 @@ def login_user(form_data: OAuth2PasswordRequestForm = Depends()):
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Cuenta desactivada"
         )
+    # DEBUG: Verificar datos del usuario
+    print(f"🔍 Usuario autenticado: {user.email}")
+    print(f"🔍 User ID: {user.id}")
+    print(f"🔍 Roles: {[role.name for role in user.roles]}")
+    print(f"🔍 Permisos: {[perm for role in user.roles for perm in role.permissions]}")
 
     # Crear token de acceso
     access_token_expires = timedelta(minutes=1440)  # 24 horas

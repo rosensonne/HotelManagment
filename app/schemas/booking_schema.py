@@ -22,19 +22,19 @@ class ExtraServiceResponse(ExtraServiceBase):
 
 class BookingBase(BaseModel):
     room_id: str
-    start_time: datetime
-    end_time: datetime
+    check_in: datetime  # Cambiado de start_time
+    check_out: datetime # Cambiado de end_time
 
-    @field_validator("end_time")
+    @field_validator("check_out")
     @classmethod
-    def validate_end_time(cls, v, info):
-        if info.data.get("start_time") and v <= info.data["start_time"]:
+    def validate_check_out(cls, v, info):
+        if info.data.get("check_in") and v <= info.data["check_in"]:
             raise ValueError("La fecha de salida debe ser posterior a la fecha de entrada.")
         return v
 
-    @field_validator("start_time")
+    @field_validator("check_in")
     @classmethod
-    def validate_start_time(cls, v):
+    def validate_check_in(cls, v):
         if v < datetime.now():
             raise ValueError("La fecha de entrada no puede ser en el pasado.")
         return v
@@ -43,14 +43,14 @@ class BookingCreate(BookingBase):
     additional_services: List[ExtraServiceCreate] = []
 
 class BookingUpdate(BaseModel):
-    start_time: Optional[datetime] = None
-    end_time: Optional[datetime] = None
+    check_in: Optional[datetime] = None   # Cambiado de start_time
+    check_out: Optional[datetime] = None  # Cambiado de end_time
     additional_services: Optional[List[ExtraServiceCreate]] = None
 
-    @field_validator("end_time")
+    @field_validator("check_out")
     @classmethod
-    def validate_end_time(cls, v, info):
-        if v and info.data.get("start_time") and v <= info.data["start_time"]:
+    def validate_check_out(cls, v, info):
+        if v and info.data.get("check_in") and v <= info.data["check_in"]:
             raise ValueError("La fecha de salida debe ser posterior a la fecha de entrada.")
         return v
 

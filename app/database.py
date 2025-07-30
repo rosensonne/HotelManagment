@@ -2,7 +2,6 @@ from mongoengine import connect
 
 from config import DATABASE_NAME, MONGO_URI
 
-
 def connect_db():
     try:
         connect(db=DATABASE_NAME, host=MONGO_URI)

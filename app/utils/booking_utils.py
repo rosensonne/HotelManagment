@@ -39,7 +39,7 @@ def validate_room_availability(room_id: str, check_in: datetime, check_out: date
         return False
 
 
-def calculate_total_price(room_price: float, extra_services: List[ExtraService], nights: int) -> float:
+def calculate_total_price(room_price_per_night: float, extra_services: List[ExtraService], nights: int) -> float:
     """
     Calcula el precio total de una reserva.
 
@@ -53,7 +53,7 @@ def calculate_total_price(room_price: float, extra_services: List[ExtraService],
     """
     try:
         # Precio base (habitación * noches)
-        base_price = room_price * nights
+        base_price = room_price_per_night * nights
 
         # Sumar servicios extras
         extras_total = sum(service.price for service in extra_services)

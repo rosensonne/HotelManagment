@@ -8,7 +8,7 @@ from app.schemas.user_schema import (
     UserResponse, UserUpdate, UserListResponse, UserRole
 )
 from app.utils.auth import (
-    get_current_active_user, require_permissions, require_roles
+    get_current_active_user, require_permissions, require_roles, oauth2_scheme
 )
 
 router = APIRouter(prefix="/users", tags=["users"])
@@ -48,8 +48,12 @@ def update_my_profile(
 @router.get("/{user_id}", response_model=UserResponse)
 def get_user_by_id(
         user_id: str,
-        current_user: User = Depends(require_permissions(["manage_users"]))
+        token: str = Depends(oauth2_scheme),
+        current_user: User = Depends(require_permissions(["manage_users"])),
 ):
+    print(f"Token recibido: {token}"),  # Debug
+    print(f"Usuario actual: {current_user.email}")
+
     try:
         user_oid = ObjectId(user_id)
     except Exception:

@@ -1,7 +1,6 @@
 from datetime import datetime
 from typing import List, Optional
 
-import status
 from bson import ObjectId
 from fastapi import APIRouter, Depends, HTTPException, status
 from mongoengine import ValidationError, DoesNotExist
@@ -25,7 +24,7 @@ from app.utils.booking_utils import (
     can_cancel_reservation
 )
 
-router = APIRouter(prefix="/reservations", tags=["Reservations"])
+router = APIRouter(prefix="/bookings", tags=["Bookings"])
 
 
 @router.post("/", response_model=BookingResponse, status_code=status.HTTP_201_CREATED)
@@ -47,20 +46,20 @@ async def create_reservation(
             )
 
         # 2. Validar fechas
-        if reservation.start_time >= reservation.end_time:
+        if reservation.check_in >= reservation.check_out:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="La fecha de salida debe ser posterior a la fecha de entrada"
             )
 
-        if reservation.start_time < datetime.now():
+        if reservation.check_in < datetime.now():
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="No se pueden hacer reservas para fechas pasadas"
             )
 
         # 3. Validar disponibilidad de la habitación
-        if not validate_room_availability(reservation.room_id, reservation.start_time, reservation.end_time):
+        if not validate_room_availability(reservation.room_id, reservation.check_in, reservation.check_out):
             raise HTTPException(
                 status_code=status.HTTP_409_CONFLICT,
                 detail="La habitación no está disponible en las fechas seleccionadas"
@@ -78,15 +77,15 @@ async def create_reservation(
                 extra_services.append(extra_service)
 
         # 5. Calcular precio total
-        nights = (reservation.end_time.date() - reservation.start_time.date()).days
-        total_price = calculate_total_price(room.price, extra_services, nights)
+        nights = (reservation.check_out.date() - reservation.check_in.date()).days
+        total_price = calculate_total_price(room.price_per_night, extra_services, nights)
 
         # 6. Crear reserva
         booking = Booking(
             room=room,
             user=current_user,
-            check_in=reservation.start_time,
-            check_out=reservation.end_time,
+            check_in=reservation.check_in,
+            check_out=reservation.check_out,
             extra_services=extra_services,
             total=total_price,
             status=[ReserveStatus(reserve_status='pending')]
@@ -105,8 +104,8 @@ async def create_reservation(
             id=str(booking.id),
             room_id=str(booking.room.id),
             user_id=str(booking.user.id),
-            start_time=booking.check_in,
-            end_time=booking.check_out,
+            check_in=booking.check_in,
+            check_out=booking.check_out,
             total_price=booking.total,
             status=booking.status[-1].reserve_status
         )
@@ -151,8 +150,8 @@ async def get_user_reservations(
                 id=str(booking.id),
                 room_id=str(booking.room.id),
                 user_id=str(booking.user.id),
-                start_time=booking.check_in,
-                end_time=booking.check_out,
+                check_in=booking.check_in,
+                check_out=booking.check_out,
                 total_price=booking.total,
                 status=current_status
             ))
@@ -170,7 +169,7 @@ async def get_user_reservations(
 async def get_reservation_details(
         reservation_id: str,
         current_user: User = Depends(get_current_user)
-        , status=None):
+):
     """
     Obtiene los detalles completos de una reserva específica.
     """
@@ -207,8 +206,8 @@ async def get_reservation_details(
             room_name=booking.room.name,
             hotel_name=booking.room.hotel.name,
             user_id=str(booking.user.id),
-            start_time=booking.check_in,
-            end_time=booking.check_out,
+            check_in=booking.check_in,
+            check_out=booking.check_out,
             extra_services=[
                 {
                     "name": service.name,
@@ -221,10 +220,10 @@ async def get_reservation_details(
             status=current_status,
             status_history=[
                 {
-                    "status": status.reserve_status,
-                    "date": status.trade_date
+                    "status": booking_status.reserve_status,
+                    "date": booking_status.trade_date
                 }
-                for status in booking.status
+                for booking_status in booking.status
             ],
             opinions=booking.opinions
         )
@@ -282,17 +281,17 @@ async def update_reservation(
         # Actualizar campos permitidos
         updated = False
 
-        if reservation_update.start_time:
-            if reservation_update.start_time < datetime.now():
+        if reservation_update.check_in:
+            if reservation_update.check_in < datetime.now():
                 raise HTTPException(
                     status_code=status.HTTP_400_BAD_REQUEST,
                     detail="No se puede cambiar a una fecha pasada"
                 )
-            booking.check_in = reservation_update.start_time
+            booking.check_in = reservation_update.check_in
             updated = True
 
-        if reservation_update.end_time:
-            booking.check_out = reservation_update.end_time
+        if reservation_update.check_out:
+            booking.check_out = reservation_update.check_out
             updated = True
 
         if reservation_update.additional_services is not None:
@@ -311,7 +310,7 @@ async def update_reservation(
         if updated:
             # Recalcular precio si hubo cambios
             nights = (booking.check_out.date() - booking.check_in.date()).days
-            booking.total = calculate_total_price(booking.room.price, booking.extra_services, nights)
+            booking.total = calculate_total_price(booking.room.price_per_night, booking.extra_services, nights)
 
             # Agregar nuevo estado de actualización
             booking.status.append(ReserveStatus(
@@ -325,8 +324,8 @@ async def update_reservation(
             id=str(booking.id),
             room_id=str(booking.room.id),
             user_id=str(booking.user.id),
-            start_time=booking.check_in,
-            end_time=booking.check_out,
+            check_in=booking.check_in,
+            check_out=booking.check_out,
             total_price=booking.total,
             status=current_status
         )
@@ -450,7 +449,7 @@ async def add_extra_service(
 
         # Recalcular precio total
         nights = (booking.check_out.date() - booking.check_in.date()).days
-        booking.total = calculate_total_price(booking.room.price, booking.extra_services, nights)
+        booking.total = calculate_total_price(booking.room.price_per_night, booking.extra_services, nights)
 
         booking.save()
 
@@ -458,8 +457,8 @@ async def add_extra_service(
             id=str(booking.id),
             room_id=str(booking.room.id),
             user_id=str(booking.user.id),
-            start_time=booking.check_in,
-            end_time=booking.check_out,
+            check_in=booking.check_in,
+            check_out=booking.check_out,
             total_price=booking.total,
             status=current_status
         )
@@ -526,7 +525,7 @@ async def remove_extra_service(
 
         # Recalcular precio total
         nights = (booking.check_out.date() - booking.check_in.date()).days
-        booking.total = calculate_total_price(booking.room.price, booking.extra_services, nights)
+        booking.total = calculate_total_price(booking.room.price_per_night, booking.extra_services, nights)
 
         booking.save()
 
@@ -534,8 +533,8 @@ async def remove_extra_service(
             id=str(booking.id),
             room_id=str(booking.room.id),
             user_id=str(booking.user.id),
-            start_time=booking.check_in,
-            end_time=booking.check_out,
+            check_in=booking.check_in,
+            check_out=booking.check_out,
             total_price=booking.total,
             status=current_status
         )
